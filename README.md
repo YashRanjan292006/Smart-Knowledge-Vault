@@ -1,41 +1,68 @@
-# Smart Knowledge Vault
+<div align="center">
+  <h1>Smart Knowledge Vault</h1>
+  <p><strong>Enterprise-Grade RAG Document Intelligence Platform</strong></p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/Node.js-18.x-43853D?style=for-the-badge&logo=node.js&logoColor=white" alt="Node" />
+    <img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
+    <img src="https://img.shields.io/badge/MongoDB-Atlas_Vector_Search-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+    <img src="https://img.shields.io/badge/Gemini-1.5_Flash-8E75B2?style=for-the-badge&logo=googlebard&logoColor=white" alt="Gemini" />
+    <img src="https://img.shields.io/badge/Redis-Upstash-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis" />
+  </p>
+</div>
 
-An intelligent document retrieval system and conversational AI interface. Smart Knowledge Vault implements a full Retrieval-Augmented Generation (RAG) pipeline to ingest, embed, and query unstructured text documents leveraging a local NLP embedding pipeline and native MongoDB Vector Search.
+---
 
-## Architecture
+## 📖 Overview
 
-*   **Frontend:** React 18, Vite, TailwindCSS v3.4, TanStack Query, Framer Motion.
-*   **Backend:** Node.js, Express, Mongoose, Multer.
-*   **Embedding Engine:** local `@xenova/transformers` instance (`all-MiniLM-L6-v2`) generating 384-dimensional vectors.
-*   **Database:** MongoDB Atlas with `$vectorSearch`.
-*   **LLM Provider:** Google Gemini API (`gemini-1.5-flash`).
-*   **Cache:** Upstash Redis.
+**Smart Knowledge Vault** is a high-performance Retrieval-Augmented Generation (RAG) system designed to securely ingest, embed, and query unstructured documentation. Unlike naive LLM implementations, this architecture utilizes **local semantic embedding pipelines** coupled with cloud-native **Vector Databases** to deliver rapid semantic search capabilities with robust token economics.
 
-## Features
+## 🏗️ System Architecture
 
-1.  **Local Vectorization:** Documents are chunked and converted into embeddings strictly within the Node environment, eliminating third-party API costs for standard semantic ingestion.
-2.  **Cosine Similarity Search:** Integrates native `$vectorSearch` via Atlas to fetch highest-confidence context nodes.
-3.  **Context Stuffing & Caching:** Mitigates LLM hallucinations by rigidly enforcing context boundaries. Caches duplicate queries via Redis for <20ms response latencies.
-4.  **Rate Limiting & Security:** Hardened JWT middleware, strict file parsing checks (Multer), and API limiters to prevent bot abuse.
+```mermaid
+graph TD
+    UI[Frontend Client<br/>React + Tailwind] <-->|REST / TanStack Query| API[Express API Gateway]
+    
+    subgraph Ingestion Pipeline
+        API -->|Upload| Multer[File Parser & Chunker]
+        Multer --> Embed[Local Embedder<br/>@xenova/transformers]
+        Embed -->|384D Vectors| Mongo[(MongoDB Atlas<br/>Vector Store)]
+    end
+    
+    subgraph Inference Pipeline
+        API -->|User Query| EmbedQuery[Query Embedder]
+        EmbedQuery -->|Cosine Similarity| Mongo
+        Mongo -->|Top-K Context| Context[Context Validation]
+        Context -->|Strict Prompt| Gemini[Google Gemini<br/>1.5 Flash]
+        Gemini --> API
+    end
+    
+    API <--> Cache[(Upstash Redis<br/>Cache & Rate Limits)]
+```
 
-## Interface Preview
+## ⚡ Core Engineering Features
 
-### Dashboard & Ingestion
-![Dashboard Interface](./assets/dashboard.png)
+1. **Edge/Local Vectorization (Transformers.js):**
+   - Implements `all-MiniLM-L6-v2` directly in the Node.js runtime.
+   - Eliminates third-party embedding API costs and reduces latency for vectorization.
+2. **Hybrid Cloud Vector Store:**
+   - Native integration with MongoDB Atlas `$vectorSearch` utilizing HNSW indexing for rapid Cosine Similarity approximations in large vector spaces.
+3. **Advanced RAG Prompt Engineering:**
+   - Rejects hallucination logic via strictly bounded context windows and fallback grounding constraints prior to Gemini 1.5 Flash inference.
+4. **Resilient API Backbone:**
+   - Upstash Redis-backed API caching layer delivering <20ms edge responses for duplicate queries.
+   - Token-bucket rate limiting via `express-rate-limit` protecting against distributed enumeration.
 
-### RAG Chat Querying
-![Chat Interface](./assets/chat.png)
-
-## Local Development
+## 🛠️ Quickstart Guide
 
 ### Prerequisites
-*   Node.js v18.x or higher
-*   MongoDB Atlas Cluster (Free tier supported)
-*   Upstash Serverless Redis endpoint
-*   Google Gemini API Key
+- Node.js (v18.x+)
+- MongoDB Atlas Cluster (Free tier Supported)
+- Upstash Serverless Redis Endpoint
+- Google AI Studio API Key (Gemini)
 
-### Database Initialization
-Apply the following JSON specification to your MongoDB Atlas Search Index on the `chunks` collection:
+### 1. Vector Search Index
+Execute the following JSON specification inside MongoDB Atlas on your `chunks` collection to enable ANN search:
 ```json
 {
   "mappings": {
@@ -51,44 +78,42 @@ Apply the following JSON specification to your MongoDB Atlas Search Index on the
 }
 ```
 
-### Installation
-
-1. Clone the repository and configure environments:
+### 2. Microservice Deployment
 ```bash
-git clone https://github.com/YashRanjan292006/smart-knowledge-vault.git
-cd smart-knowledge-vault
+# Clone the repository
+git clone https://github.com/YashRanjan292006/Smart-Knowledge-Vault.git
+cd Smart-Knowledge-Vault
+
+# Spin up Backend Engine
+cd backend
+npm install
+npm run dev
+
+# Spin up Frontend Web Application
+cd ../frontend
+npm install
+npm run dev
 ```
 
-2. Establish backend variables in `backend/.env`:
+## 🔒 Environment Variable Schema
+
 ```env
+# /backend/.env
 PORT=5000
 NODE_ENV=development
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/vault
-JWT_SECRET=<your_secure_secret>
-GEMINI_API_KEY=<your_google_api_key>
-REDIS_URL=<your_upstash_redis_url>
+MONGO_URI=mongodb+srv://<auth>@<cluster>.mongodb.net/vault
+JWT_SECRET=super_secure_sha256_hash
+GEMINI_API_KEY=AIzaSy...
+REDIS_URL=redis://...
 ```
 
-3. Install dependencies and boot the servers:
+## 📡 Testing & Validation
+The backend is rigorously testing using unit blocks.
 ```bash
-# Terminal 1: API Engine
-cd backend
-npm install
-npm run dev
-
-# Terminal 2: Client Interface
-cd frontend
-npm install
-npm run dev
+cd backend && npm run test
 ```
 
-## Testing Protocol
-
-To execute the backend Jest suite and validate endpoint routing:
-```bash
-cd backend
-npm run test
-```
-
-## License
-MIT
+---
+<div align="center">
+  <p>Engineered by Yash Ranjan | Top 1% MERN & AI Integrations</p>
+</div>
